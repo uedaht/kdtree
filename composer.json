@@ -1,21 +1,27 @@
 {
-    "name": "hexogen/kdtree",
+    "name": "uedaht/kdtree",
     "type": "library",
     "description": "file system KDTree index",
     "keywords": [
         "hexogen",
+        "uedaht",
         "kdtree",
         "data structures",
         "algorithms",
         "search"
     ],
-    "homepage": "https://github.com/hexogen/kdtree",
+    "homepage": "https://github.com/uedaht/kdtree",
     "license": "MIT",
     "authors": [
         {
             "name": "Volodymyr Basarab",
             "email": "volodymyrbas@gmail.com",
             "homepage": "https://github.com/hexogen",
+            "role": "Developer"
+        },
+        {
+            "name": "uedaht",
+            "homepage": "https://github.com/uedaht",
             "role": "Developer"
         }
     ],
