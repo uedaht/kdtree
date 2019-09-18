@@ -27,6 +27,21 @@ class NearestSearch extends SearchAbstract
     private $point;
 
     /**
+     * @var string
+     */
+    private $typeDistance;
+
+    /**
+     * @var float
+     */
+    private $maxDistance;
+
+    /**
+     * @const float
+     */
+    private const RADIUS = 6371e3;
+
+    /**
      * Search items it the tree by given algorithm
      *
      * @api
@@ -34,10 +49,12 @@ class NearestSearch extends SearchAbstract
      * @param int $resultLength
      * @return ItemInterface[]
      */
-    public function search(PointInterface $point, int $resultLength = 1) : array
+    public function search(PointInterface $point, int $resultLength = 1, float $maxDistance = 0.,string $typeDistance = '') : array
     {
         $this->validatePoint($point);
         $this->point = $point;
+        $this->typeDistance = $typeDistance;
+        $this->maxDistance = $maxDistance;
 
         $upperBound = $this->tree->getMaxBoundary();
         $lowerBound = $this->tree->getMinBoundary();
@@ -163,7 +180,7 @@ class NearestSearch extends SearchAbstract
     }
 
     /**
-     * Calculate Euclidean distance between point and item
+     * Calculate Euclidean distance or great-circle distance (Haversine formula) between point and item
      *
      * @param ItemInterface $item
      * @param PointInterface $point
@@ -172,10 +189,40 @@ class NearestSearch extends SearchAbstract
     private function calculateDistance(ItemInterface $item, PointInterface $point) : float
     {
         $distance = 0.;
-        for ($i = 0; $i < $this->dimensions; $i++) {
-            $distance += pow($item->getNthDimension($i) - $point->getNthDimension($i), 2);
+        if ($this->equalsPoint($item,$point)) {
+            return $distance;
         }
-        return $distance;
+    
+        if ($this->typeDistance == 'haversine') {
+            $radius = self::RADIUS;
+			
+			$itemLat = deg2rad($item->getNthDimension(0));
+			$pointLat = deg2rad($point->getNthDimension(0));
+
+			$itemLon = deg2rad($item->getNthDimension(1));
+			$pointLon = deg2rad($point->getNthDimension(1));
+			
+			$diffLat = $pointLat - $itemLat;
+			$diffLon = $pointLon - $itemLon;
+
+			$a = sin($diffLat/2)*sin($diffLat/2) + cos($itemLat)*cos($pointLat) * sin($diffLon/2)*sin($diffLon/2);
+			$c = 2 * atan2(sqrt($a), sqrt(1-$a));
+			$distance = $radius * $c;
+        } else {
+            for ($i = 0; $i < $this->dimensions; $i++) {
+                $distance += pow($item->getNthDimension($i) - $point->getNthDimension($i), 2);
+            }
+        }
+        
+		return $distance;
+	}
+		
+	private function equalsPoint(ItemInterface $item, PointInterface $point) : bool
+	{
+		if (abs($point->getNthDimension(0) - $item->getNthDimension(0)) > PHP_FLOAT_EPSILON) return false;
+		if (abs($point->getNthDimension(1) - $item->getNthDimension(1)) > PHP_FLOAT_EPSILON) return false;
+
+		return true;
     }
 
     /**
@@ -198,7 +245,14 @@ class NearestSearch extends SearchAbstract
     ) {
         $item = $node->getItem();
         $distance = $this->calculateDistance($item, $this->point);
-        $this->addToQueue($item, $distance);
+        
+        if ($this->typeDistance == 'haversine') {
+            if ($this->maxDistance >= $distance) {
+                $this->addToQueue($item, $distance);
+            }
+        } else {
+            $this->addToQueue($item, $distance);
+        }
 
         $rightLowerBound = $lowerBound;
         $leftUpperBound = $upperBound;
